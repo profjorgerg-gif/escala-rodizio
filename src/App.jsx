@@ -4,7 +4,7 @@ import { collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, serverTime
 import { auth, configurado, db, provider } from './firebase.js';
 import { ADMIN_INICIAL } from './firebaseConfig.js';
 import {
-  apoio, COR, efetivo, escalaPadrao, nowIdx, nPes, nSet, parse, periodo, pnome, situacao, titular, troca, vistoKey,
+  apoio, COR, efetivo, escalaPadrao, NOMES_INICIAIS, nomesDeExemplo, nowIdx, nPes, nSet, parse, periodo, pnome, situacao, titular, troca, vistoKey,
 } from './escala.js';
 import { imagemEscala, textoEscala } from './compartilhar.js';
 import { I } from './icones.jsx';
@@ -70,6 +70,9 @@ export default function App() {
       if (snap.exists()) {
         const d = snap.data();
         setE({ ...escalaPadrao(), ...d, vistos: d.vistos || {}, trocas: d.trocas || [] });
+        // Uma única vez: troca os nomes de exemplo pelos nomes da folha de papel.
+        if (canEdit && nomesDeExemplo(d.pessoas) && d.pessoas.length === NOMES_INICIAIS.length)
+          updateDoc(escRef, { pessoas: NOMES_INICIAIS.slice() }).catch(() => {});
       } else {
         setE(false);
         if (canEdit) setDoc(escRef, escalaPadrao()).catch(() => toast('Não foi possível criar a escala.'));

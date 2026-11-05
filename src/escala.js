@@ -6,11 +6,17 @@ export function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1)
 export function fmt(d) { return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
 export function mondayOf(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
 
+// Ordem da folha de papel (semana 1): 1 CME, 2 Laboratório, 3 Copa/Conforto, 4 Sala de Mat., 5 Revisão.
+export const NOMES_INICIAIS = ['Emanuella', 'Fabi', 'Gabi', 'Monique', 'Serena'];
+
+/** true quando a equipe ainda está com os nomes de exemplo ("Pessoa 1", "Pessoa 2"...). */
+export const nomesDeExemplo = (ps) => Array.isArray(ps) && ps.length > 0 && ps.every((x, i) => !String(x || '').trim() || String(x).trim() === 'Pessoa ' + (i + 1));
+
 export function escalaPadrao() {
   return {
     inicio: iso(mondayOf(new Date())),
     setores: ['CME', 'Laboratório', 'Copa/Conforto', 'Sala de Mat. + Caixa de leite', 'Revisão'],
-    pessoas: ['Pessoa 1', 'Pessoa 2', 'Pessoa 3', 'Pessoa 4', 'Pessoa 5'],
+    pessoas: NOMES_INICIAIS.slice(),
     vistos: {},
     trocas: [],
   };
