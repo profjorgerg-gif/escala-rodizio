@@ -62,13 +62,22 @@ Na página do repositório recém-criado:
 2. Arraste **todo o conteúdo** desta pasta, inclusive a pasta `.github`. Não envie as pastas `node_modules` nem `dist`, se existirem.
 3. Clique em **Commit changes**.
 
-### 3. Ligar o GitHub Pages
+### 3. Ligar o GitHub Pages (endereço reserva)
 1. No repositório: **Settings** → **Pages**.
 2. Em **Build and deployment** → **Source**, escolha **GitHub Actions**.
 3. Abra a aba **Actions** e aguarde o processo **Publicar no GitHub Pages** ficar verde (cerca de 1 a 2 minutos).
-4. O endereço do app será: `https://SEU-USUARIO.github.io/escala-rodizio/`
+4. Endereço reserva: `https://SEU-USUARIO.github.io/escala-rodizio/`
 
-Cada vez que um arquivo for alterado no GitHub, o app é publicado de novo automaticamente.
+### 4. Endereço principal: https://escala-rodizio.web.app (Firebase Hosting)
+1. Firebase Console → engrenagem ⚙ → **Configurações do projeto** → aba **Contas de serviço** → **Gerar nova chave privada** → **Gerar chave**. Um arquivo `.json` é baixado.
+2. GitHub → repositório → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+   - Name: `FIREBASE_SERVICE_ACCOUNT`
+   - Secret: abra o `.json` no Bloco de Notas, copie **todo** o conteúdo e cole.
+   - Clique em **Add secret**.
+3. Aba **Actions** → **Publicar o app** → **Run workflow**.
+4. Apague o arquivo `.json` do computador. Ele dá acesso ao projeto e não deve ser compartilhado.
+
+Cada vez que um arquivo for alterado no GitHub, o app é publicado de novo automaticamente nos dois endereços.
 
 ---
 

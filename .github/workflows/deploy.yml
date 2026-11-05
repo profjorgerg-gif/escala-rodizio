@@ -1,5 +1,7 @@
-# Publica o app no GitHub Pages a cada envio para a branch main.
-name: Publicar no GitHub Pages
+# Publica o app a cada envio para a branch main:
+#  - GitHub Pages:     https://profjorgerg-gif.github.io/escala-rodizio/
+#  - Firebase Hosting: https://escala-rodizio.web.app  (precisa do segredo FIREBASE_SERVICE_ACCOUNT)
+name: Publicar o app
 
 on:
   push:
@@ -12,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: publicar
   cancel-in-progress: true
 
 jobs:
@@ -30,7 +32,7 @@ jobs:
         with:
           path: dist
 
-  deploy:
+  github-pages:
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -39,3 +41,28 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  firebase-hosting:
+    runs-on: ubuntu-latest
+    env:
+      TEM_CHAVE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - name: Aviso
+        if: env.TEM_CHAVE != 'true'
+        run: echo "::warning::Segredo FIREBASE_SERVICE_ACCOUNT ainda não cadastrado. Publicação em escala-rodizio.web.app ignorada."
+      - uses: actions/checkout@v4
+        if: env.TEM_CHAVE == 'true'
+      - uses: actions/setup-node@v4
+        if: env.TEM_CHAVE == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci && npm run build
+        if: env.TEM_CHAVE == 'true'
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: env.TEM_CHAVE == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: escala-rodizio
+          channelId: live

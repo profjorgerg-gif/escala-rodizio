@@ -319,7 +319,7 @@ function Cadastros({ E, isAdmin, salvar, toast, usuarios, email, setDestaque, pe
 }
 
 function Pedidos({ E, pedidos, isAdmin, toast }) {
-  const link = location.origin + location.pathname;
+  const link = 'https://escala-rodizio.web.app';
   const convite = '*Escala de Rodízio*\nAbra o link e entre com a sua conta Google:\n' + link
     + '\n\nDepois é só aguardar a liberação. No celular, use o menu ⋮ do Chrome > Adicionar à tela inicial.';
   const sugestao = (nome) => {
