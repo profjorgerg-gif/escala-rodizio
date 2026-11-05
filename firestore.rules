@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// Regras de segurança da Escala de Rodízio.
+// Copie este conteúdo em: Firebase Console > Firestore Database > Regras > Publicar.
+//
+// Perfis (coleção "usuarios", um documento por e-mail):
+//   admin  -> tudo, inclusive liberar e remover acessos
+//   chefe  -> atualiza a escala (nomes, atribuições, datas, vistos, trocas)
+//   equipe -> só visualiza
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // E-mail do primeiro administrador. Precisa ser igual ao ADMIN_INICIAL de src/firebaseConfig.js.
+    function adminInicial() { return 'profjorge.rg@gmail.com'; }
+
+    function logado() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function meuEmail() { return request.auth.token.email.lower(); }
+    function meuCadastro() { return /databases/$(database)/documents/usuarios/$(meuEmail()); }
+    function cadastrado() { return logado() && exists(meuCadastro()); }
+    function papel() { return cadastrado() ? get(meuCadastro()).data.papel : ''; }
+    function ehAdmin() { return logado() && (meuEmail() == adminInicial() || papel() == 'admin'); }
+    function podeEditar() { return ehAdmin() || papel() == 'chefe'; }
+
+    match /usuarios/{email} {
+      // Cada um lê o próprio cadastro; o administrador lê todos.
+      allow read: if ehAdmin() || (logado() && email == meuEmail());
+      // Só o administrador libera, altera ou remove acessos.
+      allow write: if ehAdmin()
+        && (request.resource == null
+            || (request.resource.data.papel in ['admin', 'chefe', 'equipe']
+                && request.resource.data.nome is string));
+    }
+
+    match /escala/{documento} {
+      // Toda pessoa cadastrada vê a escala.
+      allow read: if cadastrado() || ehAdmin();
+      // Só enfermeira chefe e administrador alteram.
+      allow write: if podeEditar();
+    }
+
+    // Qualquer outra coleção fica fechada.
+    match /{caminho=**} {
+      allow read, write: if false;
+    }
+  }
+}
