@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth';
-import { collection, deleteDoc, deleteField, doc, onSnapshot, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { auth, configurado, db, provider } from './firebase.js';
 import { ADMIN_INICIAL } from './firebaseConfig.js';
 import {
@@ -18,6 +18,7 @@ export default function App() {
   const [status, setStatus] = useState(configurado ? 'carregando' : 'naoconfigurado');
   const [E, setE] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
+  const [pedidos, setPedidos] = useState([]);
   const [view, setView] = useState('semana');
   const [semW, setSemW] = useState(null);
   const [destaque, setDestaque] = useState(null);
@@ -52,7 +53,13 @@ export default function App() {
         catch { setStatus('semacesso'); }
         return;
       }
-      setStatus('semacesso');
+      // Sem cadastro: registra um pedido de acesso para a chefe ou o administrador aprovar.
+      try {
+        const pRef = doc(db, 'pedidos', email);
+        const ja = await getDoc(pRef);
+        if (!ja.exists()) await setDoc(pRef, { nome: fbUser.displayName || email, email, criado: serverTimestamp() });
+        setStatus('pedido');
+      } catch { setStatus('semacesso'); }
     }, () => setStatus('semacesso'));
   }, [fbUser, email]);
 
@@ -68,6 +75,13 @@ export default function App() {
         if (canEdit) setDoc(escRef, escalaPadrao()).catch(() => toast('Não foi possível criar a escala.'));
       }
     }, () => toast('Sem conexão com a escala.'));
+  }, [status, canEdit]);
+
+  // Pedidos de acesso (administrador e enfermeira chefe)
+  useEffect(() => {
+    if (status !== 'ok' || !canEdit) { setPedidos([]); return; }
+    return onSnapshot(collection(db, 'pedidos'), (q) =>
+      setPedidos(q.docs.map((d) => ({ email: d.id, ...d.data() }))), () => setPedidos([]));
   }, [status, canEdit]);
 
   // Lista de usuários (só administrador)
@@ -102,6 +116,10 @@ export default function App() {
   if (status === 'login') return <Casca><div className="login"><h2>Bem-vindo(a)</h2>
     <p className="muted" style={{ margin: 0 }}>Entre com a sua conta Google para ver a escala.</p>
     <button className="gbtn" onClick={entrar}>{I.google}Entrar com Google</button></div><Toast msg={msg} /></Casca>;
+  if (status === 'pedido') return <Casca><div className="login"><h2>Pedido enviado</h2>
+    <p style={{ margin: 0 }}>Olá, <b>{fbUser?.displayName || email}</b>. Seu pedido de acesso chegou para a enfermeira chefe.</p>
+    <p className="muted" style={{ margin: 0 }}>Assim que ela aprovar, a escala abre sozinha nesta tela. Se preferir, feche e volte mais tarde.</p>
+    <button className="btn ghost" onClick={() => signOut(auth)}>Usei a conta errada</button></div></Casca>;
   if (status === 'semacesso') return <Casca><div className="login"><h2>Conta sem acesso</h2>
     <p style={{ margin: 0, color: 'var(--danger)', fontWeight: 700 }}>O e-mail {email} ainda não foi liberado.</p>
     <p className="muted" style={{ margin: 0 }}>Peça ao administrador para cadastrar você.</p>
@@ -117,7 +135,7 @@ export default function App() {
     {E === false && !canEdit ? 'A escala ainda não foi criada pela enfermeira chefe.' : 'Carregando a escala…'}</p></Casca>;
 
   const w = semW ?? 0, ni = nowIdx(E), eu = perfil?.pessoa ?? null;
-  const p = { E, w, ni, eu, canEdit, isAdmin, salvar, toast, setSemW, setSheet, setShare, destaque, setDestaque, usuarios, email };
+  const p = { E, w, ni, eu, canEdit, isAdmin, salvar, toast, setSemW, setSheet, setShare, destaque, setDestaque, usuarios, email, pedidos };
 
   return <>
     <div className="no-print">
@@ -125,7 +143,7 @@ export default function App() {
         <nav className="tabs" aria-label="Telas">
           <Tab v="escala" view={view} setView={setView} icon={I.tabela}>Escala</Tab>
           <Tab v="semana" view={view} setView={setView} icon={I.calendario}>Trocas</Tab>
-          {canEdit && <Tab v="cadastros" view={view} setView={setView} icon={I.ajustes}>Cadastros</Tab>}
+          {canEdit && <Tab v="cadastros" view={view} setView={setView} icon={I.ajustes}>Cadastros{pedidos.length > 0 && <span className="badge-n">{pedidos.length}</span>}</Tab>}
         </nav>
         <main>
           {view === 'escala' && <Escala {...p} />}
@@ -230,7 +248,7 @@ function Escala({ E, ni, eu, destaque, setDestaque, setShare }) {
 }
 
 // ---------- Cadastros ----------
-function Cadastros({ E, isAdmin, salvar, toast, usuarios, email, setDestaque }) {
+function Cadastros({ E, isAdmin, salvar, toast, usuarios, email, setDestaque, pedidos }) {
   const [abertos, setAbertos] = useState({ nomes: true });
   const [confirmar, setConfirmar] = useState(null);
   const tg = (k) => (e) => { const o = e.currentTarget.open; setAbertos((a) => ({ ...a, [k]: o })); };
@@ -259,6 +277,7 @@ function Cadastros({ E, isAdmin, salvar, toast, usuarios, email, setDestaque }) 
 
   return <>
     <h2>Cadastros</h2>
+    <Pedidos E={E} pedidos={pedidos} isAdmin={isAdmin} toast={toast} />
     <details className="card" open={!!abertos.nomes} onToggle={tg('nomes')}><summary>Nomes da equipe</summary>
       <p className="muted small" style={{ margin: '6px 0 0' }}>O número de cada pessoa é a ordem dela na primeira semana.</p>
       {E.pessoas.map((x, i) => <div className="pair" key={i + ':' + x}>
@@ -296,6 +315,52 @@ function Cadastros({ E, isAdmin, salvar, toast, usuarios, email, setDestaque }) 
     </details>
 
     {isAdmin && <Acessos E={E} usuarios={usuarios} email={email} toast={toast} aberto={!!abertos.acessos} onToggle={tg('acessos')} />}
+  </>;
+}
+
+function Pedidos({ E, pedidos, isAdmin, toast }) {
+  const link = location.origin + location.pathname;
+  const convite = '*Escala de Rodízio*\nAbra o link e entre com a sua conta Google:\n' + link
+    + '\n\nDepois é só aguardar a liberação. No celular, use o menu ⋮ do Chrome > Adicionar à tela inicial.';
+  const sugestao = (nome) => {
+    const n1 = String(nome || '').trim().split(/\s+/)[0]?.toLowerCase();
+    const i = E.pessoas.findIndex((x) => x.trim() && x.trim().split(/\s+/)[0].toLowerCase() === n1);
+    return i >= 0 ? String(i) : '';
+  };
+  async function aprovar(pd, form) {
+    const pv = form.pessoa.value, papel = form.papel?.value || 'equipe';
+    const b = writeBatch(db);
+    b.set(doc(db, 'usuarios', pd.email), { nome: pd.nome || pd.email, papel, pessoa: pv === '' ? null : +pv });
+    b.delete(doc(db, 'pedidos', pd.email));
+    try { await b.commit(); toast('Acesso liberado para ' + (pd.nome || pd.email)); }
+    catch { toast('Não foi possível liberar. Tente de novo.'); }
+  }
+  const recusar = (pd) => deleteDoc(doc(db, 'pedidos', pd.email)).then(() => toast('Pedido recusado'), () => toast('Não foi possível recusar.'));
+  return <>
+    <div className="card">
+      <h3>Convidar a equipe</h3>
+      <p className="muted small" style={{ margin: '6px 0 0' }}>Envie o link no grupo. Cada pessoa entra com a conta Google e o pedido aparece aqui para você aprovar.</p>
+      <a className="btn wa" style={{ width: '100%', marginTop: 12 }} href={'https://wa.me/?text=' + encodeURIComponent(convite)} target="_blank" rel="noopener noreferrer">Enviar convite pelo WhatsApp</a>
+    </div>
+    {pedidos.length > 0 && <div className="card pedidos">
+      <h3>Pedidos de acesso ({pedidos.length})</h3>
+      {pedidos.map((pd) => <form key={pd.email} className="pedido" onSubmit={(e) => { e.preventDefault(); aprovar(pd, e.currentTarget); }}>
+        <div className="li" style={{ borderBottom: 0, paddingBottom: 4 }}>
+          <span className="avatar">{inicial(pd.nome)}</span>
+          <div className="what"><b>{pd.nome}</b><div className="small muted">{pd.email}</div></div>
+        </div>
+        <label className="fl" style={{ marginTop: 4 }}>Quem é na escala?
+          <select name="pessoa" defaultValue={sugestao(pd.nome)}>
+            <option value="">Não está na escala</option>
+            {E.pessoas.map((_, i) => <option key={i} value={i}>{i + 1} · {pnome(E, i)}</option>)}</select></label>
+        {isAdmin && <label className="fl">Acesso<select name="papel" defaultValue="equipe">
+          <option value="equipe">Equipe (só vê a escala)</option><option value="chefe">Enfermeira chefe</option><option value="admin">Administrador</option></select></label>}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button className="btn primary" type="submit" style={{ flex: 2 }}>{I.check}Aprovar</button>
+          <button className="btn" type="button" style={{ flex: 1 }} onClick={() => recusar(pd)}>Recusar</button>
+        </div>
+      </form>)}
+    </div>}
   </>;
 }
 

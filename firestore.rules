@@ -5,7 +5,7 @@ rules_version = '2';
 //
 // Perfis (coleção "usuarios", um documento por e-mail):
 //   admin  -> tudo, inclusive liberar e remover acessos
-//   chefe  -> atualiza a escala (nomes, atribuições, datas, vistos, trocas)
+//   chefe  -> atualiza a escala (nomes, atribuições, datas, vistos, trocas) e aprova pedidos da equipe
 //   equipe -> só visualiza
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -23,14 +23,29 @@ service cloud.firestore {
     function ehAdmin() { return logado() && (meuEmail() == adminInicial() || papel() == 'admin'); }
     function podeEditar() { return ehAdmin() || papel() == 'chefe'; }
 
+    function cadastroValido() {
+      return request.resource.data.papel in ['admin', 'chefe', 'equipe']
+        && request.resource.data.nome is string;
+    }
+
     match /usuarios/{email} {
       // Cada um lê o próprio cadastro; o administrador lê todos.
       allow read: if ehAdmin() || (logado() && email == meuEmail());
-      // Só o administrador libera, altera ou remove acessos.
-      allow write: if ehAdmin()
-        && (request.resource == null
-            || (request.resource.data.papel in ['admin', 'chefe', 'equipe']
-                && request.resource.data.nome is string));
+      // Administrador libera qualquer perfil. Enfermeira chefe libera e remove apenas perfis de Equipe.
+      allow create: if cadastroValido()
+        && (ehAdmin() || (papel() == 'chefe' && request.resource.data.papel == 'equipe'));
+      allow update: if cadastroValido()
+        && (ehAdmin() || (papel() == 'chefe' && resource.data.papel == 'equipe' && request.resource.data.papel == 'equipe'));
+      allow delete: if ehAdmin() || (papel() == 'chefe' && resource.data.papel == 'equipe');
+    }
+
+    // Pedidos de acesso: quem entra sem cadastro registra o próprio pedido.
+    match /pedidos/{email} {
+      allow create: if logado() && email == meuEmail() && !exists(meuCadastro())
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'criado'])
+        && request.resource.data.email == email;
+      allow read: if podeEditar() || (logado() && email == meuEmail());
+      allow delete: if podeEditar();
     }
 
     match /escala/{documento} {

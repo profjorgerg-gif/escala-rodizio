@@ -166,3 +166,9 @@ html,body{margin:0}
   .print-only tr.now td{background:#d9eeec}
   .print-only .pmuted{color:#555;font-size:9pt}
 }
+
+.badge-n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:var(--danger);color:#fff;font-size:.75rem;font-weight:700;margin-left:4px}
+.pedidos{border:2px solid var(--accent)}
+.pedido{padding:12px 0;border-bottom:1px solid var(--line)}
+.pedido:last-child{border-bottom:0;padding-bottom:0}
+.pedido .btn svg{width:20px;height:20px}

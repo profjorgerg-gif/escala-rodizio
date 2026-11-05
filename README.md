@@ -80,8 +80,13 @@ Cada vez que um arquivo for alterado no GitHub, o app é publicado de novo autom
    - **Nomes da equipe:** inclua ou exclua pessoas. A ordem é a posição de cada uma na primeira semana.
    - **Atribuições:** confira os nomes e a ordem do rodízio.
    - **Início do rodízio:** de preferência, uma segunda-feira.
-   - **Quem pode entrar:** libere o e-mail Google da enfermeira chefe (perfil *Enfermeira chefe*) e de cada pessoa da equipe (perfil *Equipe*). Ligue cada pessoa ao número dela na escala para que ela veja a própria atribuição destacada.
-4. **Instalar no celular:** no Chrome, abra o app → menu ⋮ → **Adicionar à tela inicial**. Ele passa a abrir como um aplicativo.
+4. **Liberar a equipe (pedido de acesso):**
+   - Em Cadastros, toque em **Enviar convite pelo WhatsApp** e mande o link no grupo.
+   - Cada pessoa abre o link e entra com a conta Google. Na tela dela aparece "Pedido enviado".
+   - O pedido aparece em **Cadastros → Pedidos de acesso**, com um número vermelho na aba. Escolha **quem ela é na escala** (o sistema sugere pelo primeiro nome) e toque em **Aprovar**. A escala abre sozinha no aparelho da pessoa.
+   - A enfermeira chefe aprova pedidos como *Equipe*. Só o administrador pode aprovar alguém como *Enfermeira chefe* ou *Administrador*: aprove primeiro a enfermeira chefe, escolhendo o acesso *Enfermeira chefe*.
+   - Se preferir, o administrador também pode liberar um e-mail antecipadamente em **Quem pode entrar**.
+5. **Instalar no celular:** no Chrome, abra o app → menu ⋮ → **Adicionar à tela inicial**. Ele passa a abrir como um aplicativo.
 
 ## Como funciona o rodízio
 - A cada semana, cada pessoa passa para a atribuição seguinte, da esquerda para a direita.
